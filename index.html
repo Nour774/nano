@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8" />
+  <title>AdminShell Console</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://unpkg.com/xterm@5.3.0/lib/xterm.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/xterm@5.3.0/css/xterm.css" />
+  <style>
+    html, body { height: 100%; margin: 0; }
+    body {
+      background: #0c0c0c;
+      color: #00ff00;
+      font-family: monospace;
+      display: flex;
+      align-items: stretch;
+      justify-content: stretch;
+      height: 100%;
+    }
+    #terminal {
+      width: 100%;
+      height: 100vh;
+      padding: 6px;
+      box-sizing: border-box;
+    }
+    .xterm-viewport { overflow: hidden !important; }
+    /* responsive tweaks */
+    @media (max-width: 640px) {
+      #terminal { padding: 4px; font-size: 14px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="terminal"></div>
+
+  <!-- load commands first -->
+  <script src="commands.js"></script>
+
+  <!-- then the main script that initializes xterm and uses COMMANDS -->
+  <script src="script.js"></script>
+</body>
+</html>
