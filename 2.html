@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>إضافة فصل | MangaSanctum</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+body{margin:0;padding:0;background:radial-gradient(circle at top,#1c1b29,#0e0d16);font-family:"Segoe UI",sans-serif;color:#eee;display:flex;justify-content:center;align-items:flex-start;min-height:100vh;padding-top:20px}
+.container{width:95%;max-width:650px;padding:20px;backdrop-filter:blur(18px);background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:18px;box-shadow:0 0 25px rgba(120,80,255,0.25);animation:fadein 0.6s ease}
+@keyframes fadein{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
+h1{text-align:center;color:#bbaaff;font-weight:normal;font-size:1.6em;}
+#searchBox{width:100%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:10px;padding:10px;color:#eee;margin-bottom:12px;}
+#mangaList{max-height:250px;overflow-y:auto;margin-bottom:20px;border-radius:12px;border:1px solid rgba(255,255,255,0.12);}
+.manga-item{padding:8px;cursor:pointer;display:flex;align-items:center;gap:10px;transition:0.2s;}
+.manga-item:hover{background:rgba(140,120,255,0.15);}
+.manga-item.selected{background:rgba(140,120,255,0.3);}
+.manga-item img{width:50px;height:65px;border-radius:6px;object-fit:cover;flex-shrink:0;}
+label{display:block;margin-top:15px;font-size:0.9em;}
+input,textarea{width:100%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:10px;padding:10px;color:#eee;margin-top:8px;transition:0.3s;font-size:0.9em;}
+input:focus,textarea:focus{border-color:#8b70ff;box-shadow:0 0 0 3px rgba(140,120,255,0.25);outline:none;}
+button{width:100%;margin-top:25px;padding:12px;font-size:17px;background:linear-gradient(135deg,#7d5cff,#6140ff);border:none;border-radius:12px;color:#fff;cursor:pointer;transition:0.3s;font-weight:bold;}
+button:disabled{opacity:0.4;cursor:not-allowed;}
+#status{margin-top:15px;text-align:center;color:#ccbaff;font-size:0.9em;}
+</style>
+</head>
+<body>
+
+<div class="container">
+<h1>إضافة فصل جديد</h1>
+
+<input id="searchBox" type="text" placeholder="ابحث عن المانجا">
+<div id="mangaList"></div>
+
+<label>رقم الفصل</label>
+<input id="chapterNumber" type="text">
+
+<label>عنوان الفصل (اختياري)</label>
+<input id="chapterName" type="text">
+
+<label>ملف الفصل (PDF / ZIP / DOCX / صور...)</label>
+<input id="chapterFile" type="file">
+
+<button id="uploadBtn">رفع الفصل</button>
+<div id="status"></div>
+</div>
+
+<script>
+const GAS_URL = "https://script.google.com/macros/s/AKfycbzgyWKBmyyEqC-25zAUHzIfvK6cEOWvOgC3HLs9LOC77SeYuy_yGLLqwR9nxRK_J9Qj2g/exec";
+
+let mangaData = [];
+let selectedManga = null;
+
+const searchBox = document.getElementById("searchBox");
+const mangaList = document.getElementById("mangaList");
+const chapterNumber = document.getElementById("chapterNumber");
+const chapterName = document.getElementById("chapterName");
+const chapterFile = document.getElementById("chapterFile");
+const uploadBtn = document.getElementById("uploadBtn");
+const status = document.getElementById("status");
+
+function convertDriveLink(url){
+  if(!url)return"";
+  const m1=url.match(/\/d\/(.*?)\/view/);
+  if(m1&&m1[1])return`https://lh3.googleusercontent.com/d/${m1[1]}`;
+  const m2=url.match(/id=([a-zA-Z0-9_-]+)/);
+  if(m2&&m2[1])return`https://lh3.googleusercontent.com/d/${m2[1]}`;
+  return url;
+}
+
+searchBox.addEventListener("input", ()=>{
+  const val = searchBox.value.trim().toLowerCase();
+  mangaList.innerHTML = "";
+  if(val.length === 0) return;
+
+  mangaData.forEach(item=>{
+    if(!item) return;
+    const name = item.name;
+    const cover = item.cover;
+
+    if(name.toLowerCase().includes(val)){
+      const div = document.createElement("div");
+      div.className = "manga-item";
+      div.innerHTML = cover ?
+        `<img src="${convertDriveLink(cover)}"><span>${name}</span>` :
+        `<span>${name}</span>`;
+
+      div.onclick = () => {
+        document.querySelectorAll(".manga-item").forEach(i=>i.classList.remove("selected"));
+        div.classList.add("selected");
+        selectedManga = name;
+        searchBox.value = name;
+        mangaList.innerHTML = "";
+      };
+
+      mangaList.appendChild(div);
+    }
+  });
+});
+
+fetch(GAS_URL + "?action=getMangaList")
+  .then(r=>r.json())
+  .then(data=>{ mangaData = data.list || []; })
+  .catch(err=>console.error(err));
+
+function readFileAsDataURL(file){
+  return new Promise((resolve,reject)=>{
+    const fr = new FileReader();
+    fr.onerror = () => reject("فشل قراءة الملف");
+    fr.onload = () => resolve(fr.result);
+    fr.readAsDataURL(file);
+  });
+}
+
+uploadBtn.onclick = async ()=>{
+  if(!selectedManga){ status.innerHTML="⚠️ اختر مانجا أولاً"; return; }
+
+  const number = chapterNumber.value.trim();
+  const title = chapterName.value.trim();
+  const file = chapterFile.files[0];
+
+  if(!number || !file){
+    status.innerHTML="⚠️ أدخل رقم الفصل واختر ملفاً";
+    return;
+  }
+
+  uploadBtn.disabled = true;
+  status.innerHTML="⏳ جاري الرفع...";
+
+  try{
+    const dataUrl = await readFileAsDataURL(file);
+    const base64 = dataUrl.split(",")[1];
+
+    const payload = {
+      action: "addChapter",
+      manga: selectedManga,
+      number,
+      title,
+      fileName: file.name,
+      mimeType: file.type || "application/octet-stream",
+      fileBase64: base64
+    };
+
+    const res = await fetch(GAS_URL, {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body:JSON.stringify(payload)
+    });
+
+    const json = await res.json();
+
+    if(json.status === "success"){
+      status.innerHTML="✔️ تم رفع الفصل بنجاح!";
+      chapterNumber.value="";
+      chapterName.value="";
+      chapterFile.value="";
+    } else {
+      status.innerHTML="❌ خطأ: "+json.message;
+    }
+
+  } catch(err){
+    console.log(err);
+    status.innerHTML="❌ خطأ أثناء الرفع";
+  }
+
+  uploadBtn.disabled = false;
+};
+</script>
+</body>
+</html>
